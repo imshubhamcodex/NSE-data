@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Option Data - PUT</title>
+    <script src="https://d3js.org/d3.v6.min.js"></script>
+    <script
+      src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.9.4/Chart.min.js"
+      integrity="sha512-d9xgZrVZpmmQlfonhQUvTR7lMPtO7NkZMkA0ABN3PHCbKA5nqylQ/yWlFAyY6hYgdF1Qh6nYiuADWwKB4C2WSw=="
+      crossorigin="anonymous"
+    ></script>
+  </head>
+  <body>
+    <button class="circle-div" onclick="openCALL()">Open CALL</button>
+
+    <canvas id="myChart" width="100"></canvas>
+    <script>
+      function openCALL() {
+        window.open("./callIndex.html");
+      }
+      let readCSVInv = setInterval(readCSV, 4 * 60 * 1000);
+
+      readCSV();
+      function readCSV() {
+        d3.csv("./compiled-report-put.csv").then(makeChart);
+      }
+
+      function makeChart(optionData) {
+        let xTime = Object.keys(optionData[0]);
+        xTime.shift();
+        console.log(xTime);
+
+        let timeSet = false;
+        let refTime = "00:00:00";
+        let maxIO = {
+          maxPrice: -999999,
+          index: -99,
+        };
+
+        xTime.forEach((time) => {
+          let hr = time.toString().split(":")[0];
+          let min = time.toString().split(":")[1];
+
+          if (Number(hr) <= 9 && Number(min) < 30) {
+            return;
+          } else {
+            if (!timeSet) {
+              refTime = time;
+              timeSet = true;
+            }
+          }
+        });
+
+        optionData.forEach((ele, index) => {
+          let p = ele[refTime];
+          p = p.replace(/\,/g, "");
+          p = Number(p);
+
+          if (p > maxIO.maxPrice) {
+            maxIO.maxPrice = p;
+            maxIO.index = index;
+          }
+        });
+
+        console.log(maxIO);
+
+        if (maxIO.index - 10 >= 0 && maxIO.index + 11 < optionData.length)
+          optionData = optionData.slice(maxIO.index - 10, maxIO.index + 10 + 1);
+        else optionData = optionData.slice(0, optionData.length);
+
+        console.log(optionData);
+
+        let strikPrice = [];
+
+        let backgroundColor = [
+          "rgba(255, 99, 132, 0.2)",
+          "rgba(54, 162, 235, 0.2)",
+          "rgba(255, 206, 86, 0.2)",
+          "rgba(75, 192, 192, 0.2)",
+          "rgba(153, 102, 255, 0.2)",
+          "rgba(255, 159, 64, 0.2)",
+        ];
+        let borderColor = [
+          "rgba(255, 99, 132, 1)",
+          "rgba(54, 162, 235, 1)",
+          "rgba(255, 206, 86, 1)",
+          "rgba(75, 192, 192, 1)",
+          "rgba(153, 102, 255, 1)",
+          "rgba(255, 159, 64, 1)",
+        ];
+
+        let adjustData = optionData.map(function (price, i) {
+          let key = Object.keys(price);
+
+          key.forEach((ele) => {
+            if (ele !== "STRIKE_PRICE") {
+              let p = price[ele];
+              p = p.replace(/\,/g, "");
+              p = Number(p);
+
+              price[ele] = Number(p);
+            }
+          });
+        });
+
+        let yPrice = optionData.map(function (price, i) {
+          let data = Object.values(price);
+          strikPrice.push(data.shift());
+          return {
+            data,
+            label: strikPrice[i],
+            backgroundColor: backgroundColor[i],
+            borderColor: borderColor[i],
+          };
+        });
+
+        var chart = new Chart("myChart", {
+          type: "line",
+          data: {
+            labels: xTime,
+            datasets: yPrice,
+          },
+        });
+      }
+    </script>
+  </body>
+  <style>
+    .circle-div {
+      background-color: green;
+      height: 50px;
+      width: 50px;
+      border-radius: 100%;
+      position: absolute;
+      bottom: 11px;
+      right: 25px;
+      color: white;
+      cursor: pointer;
+    }
+  </style>
+</html>
